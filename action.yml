@@ -23,7 +23,6 @@ inputs:
 outputs:
   binary:
     description: "The builded binary"
-    required: true
 
 runs:
   using: "composite"
