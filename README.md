@@ -1,4 +1,4 @@
-# action-swift-cli-build-
+# action-swift-cli-build
 
 Build swift cli tool on macOS or ubuntu
 
@@ -15,13 +15,12 @@ jobs:
         swift: ["5.7"]
     steps:
     - uses: phimage/action-swift-cli-build@v1
-      id: binary
       with:
         swift-version: ${{ matrix.swift }}
         bin-name: "my-binary-name"
     - name: Launch my compile cli tools
       run: |
-        ${{ steps.binary.outputs.binary }} --help
+        $BINARY --help
 ```
 
 ## Release
