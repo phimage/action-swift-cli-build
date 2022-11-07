@@ -1,0 +1,89 @@
+name: Swift build cli tools
+description: 'Setup a Swift environment on Ubuntu or macOS and build'
+author: Eric Marchand
+inputs:
+  swift-version: 
+    description: Swift version to configure
+    required: true
+    default: '5.7'
+  bin-name: 
+    description: Binary name
+    required: false
+    default: ''
+  mode:
+    description: Build mode (release or debug)
+    required: false
+    default: 'release'
+  upload-to-release:
+    description: Upload to release
+    required: false
+  repo-token:
+    description: 'The GITHUB_TOKEN secret'
+    required: false
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v3
+    - uses: swift-actions/setup-swift@v1
+      with:
+        swift-version: ${{ inputs.swift-version }}
+    - name: Get swift version
+      shell: bash
+      run: swift --version
+    - name: Build
+      shell: bash
+      run: |
+        mode="${{ inputs.mode }}"
+        if [[ "$OSTYPE" == "darwin"* ]]; then  # Mac OSX
+            # TODO: inputs archs?
+            swift build -c $mode --arch arm64 --arch x86_64
+            mode="$(tr '[:lower:]' '[:upper:]' <<< ${mode:0:1})${mode:1}"
+            echo "BINARY_PATH=.build/apple/Products/$mode/" >> $GITHUB_ENV
+        else
+            # TODO: inputs static or/and dynamic
+            swift build -c $mode -Xswiftc -static-executable
+            echo "BINARY_PATH=.build/$mode/" >> $GITHUB_ENV
+        fi
+    - name: Execute --help
+      shell: bash
+      run: |
+        BINARY="${{ inputs.bin-name }}"
+        if [[ -z "$bin" ]]; then
+          BINARY=$(jq --raw-output '.repository.name' $GITHUB_EVENT_PATH)
+        fi
+        echo "BINARY=$BINARY" >> $GITHUB_ENV
+        $BINARY_PATH/$BINARY --help
+    - name: Upload to release
+      shell: bash
+      if: ${{ inputs.upload-to-release }}
+      run: |
+        echo "📦 Archive" 
+        cd "$BINARY_PATH"
+        if [[ "$OSTYPE" == "darwin"* ]]; then  # Mac OSX
+          ARCHIVE_NAME="$BINARY.zip"
+        else
+          . /etc/lsb-release
+          DISTRIB_ID=$(echo "$DISTRIB_ID" | tr '[:upper:]' '[:lower:]')
+          ARCHIVE_NAME="$BINARY-x86_64-static-$DISTRIB_ID-$DISTRIB_CODENAME.zip"
+        fi
+        zip -r "$ARCHIVE_NAME" "$BINARY"
+        echo "⬆️ Upload"
+        REPOSITORY_NAME=$(jq --raw-output '.repository.name' $GITHUB_EVENT_PATH)
+        ARTIFACT=$ARCHIVE_NAME
+        AUTH_HEADER="Authorization: token ${{ inputs.repo-token }}"
+        if [[ "$OSTYPE" == "darwin"* ]]; then  # Mac OSX
+          CONTENT_LENGTH_HEADER="Content-Length: $(stat -f%z "$ARTIFACT")"
+        else
+          CONTENT_LENGTH_HEADER="Content-Length: $(stat --format=%s "$ARTIFACT")"
+        fi
+        CONTENT_TYPE_HEADER="Content-Type: application/zip"
+        RELEASE_ID=$(jq --raw-output '.release.id' $GITHUB_EVENT_PATH)
+        FILENAME=$(basename $ARTIFACT)
+        UPLOAD_URL="https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?name=$FILENAME"
+        echo "$UPLOAD_URL"
+        curl -sSL -XPOST \
+          -H "$AUTH_HEADER" -H "$CONTENT_LENGTH_HEADER" -H "$CONTENT_TYPE_HEADER" \
+          --upload-file "$ARTIFACT" "$UPLOAD_URL"
+branding:
+  icon: 'command'  
+  color: 'orange'
