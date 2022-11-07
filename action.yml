@@ -20,6 +20,11 @@ inputs:
   repo-token:
     description: 'The GITHUB_TOKEN secret'
     required: false
+outputs:
+  binary:
+    description: "The builded binary"
+    required: true
+
 runs:
   using: "composite"
   steps:
@@ -34,25 +39,37 @@ runs:
       shell: bash
       run: |
         mode="${{ inputs.mode }}"
+
         if [[ "$OSTYPE" == "darwin"* ]]; then  # Mac OSX
             # TODO: inputs archs?
             swift build -c $mode --arch arm64 --arch x86_64
             mode="$(tr '[:lower:]' '[:upper:]' <<< ${mode:0:1})${mode:1}"
-            echo "BINARY_PATH=.build/apple/Products/$mode/" >> $GITHUB_ENV
+            BINARY_PATH=".build/apple/Products/$mode/"
         else
             # TODO: inputs static or/and dynamic
             swift build -c $mode -Xswiftc -static-executable
-            echo "BINARY_PATH=.build/$mode/" >> $GITHUB_ENV
+            BINARY_PATH=".build/$mode/"
         fi
+
+        BINARY_NAME="${{ inputs.bin-name }}"
+        if [[ -z "$bin" ]]; then
+          BINARY_NAME=$(jq --raw-output '.repository.name' $GITHUB_EVENT_PATH)
+        fi
+
+        BINARY=$BINARY_PATH$BINARY_NAME
+
+        echo "BINARY_NAME=$BINARY_NAME" >> $GITHUB_ENV
+        echo "BINARY_PATH=$BINARY_PATH" >> $GITHUB_ENV
+        echo "BINARY=$BINARY" >> $GITHUB_ENV
+        echo "$BINARY_PATH" >> $GITHUB_PATH
+
+        echo "### $BINARY :rocket:" >> $GITHUB_STEP_SUMMARY
+        echo "::set-output name=binary::$BINARY"
+
     - name: Execute --help
       shell: bash
       run: |
-        BINARY="${{ inputs.bin-name }}"
-        if [[ -z "$bin" ]]; then
-          BINARY=$(jq --raw-output '.repository.name' $GITHUB_EVENT_PATH)
-        fi
-        echo "BINARY=$BINARY" >> $GITHUB_ENV
-        $BINARY_PATH/$BINARY --help
+        $BINARY --help
     - name: Upload to release
       shell: bash
       if: ${{ inputs.upload-to-release }}
@@ -60,13 +77,14 @@ runs:
         echo "📦 Archive" 
         cd "$BINARY_PATH"
         if [[ "$OSTYPE" == "darwin"* ]]; then  # Mac OSX
-          ARCHIVE_NAME="$BINARY.zip"
+          ARCHIVE_NAME="$BINARY_NAME.zip"
         else
           . /etc/lsb-release
           DISTRIB_ID=$(echo "$DISTRIB_ID" | tr '[:upper:]' '[:lower:]')
-          ARCHIVE_NAME="$BINARY-x86_64-static-$DISTRIB_ID-$DISTRIB_CODENAME.zip"
+          ARCHIVE_NAME="$BINARY_NAME-x86_64-static-$DISTRIB_ID-$DISTRIB_CODENAME.zip"
         fi
-        zip -r "$ARCHIVE_NAME" "$BINARY"
+        zip -r "$ARCHIVE_NAME" "$BINARY_NAME"
+
         echo "⬆️ Upload"
         REPOSITORY_NAME=$(jq --raw-output '.repository.name' $GITHUB_EVENT_PATH)
         ARTIFACT=$ARCHIVE_NAME
