@@ -110,7 +110,7 @@ binary=$TMP/$binary_name
 
 dst="/usr/local/bin"
 echo "Install into $dst/binary_name"
-sudo rm -f $dst/binary_name
+sudo rm -f $dst/$binary_name
 sudo cp $binary $dst/
 
 rm -rf "$TMP"
