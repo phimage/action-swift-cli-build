@@ -45,7 +45,6 @@ jobs:
         swift: ["5.7"]
     steps:
     - uses: phimage/action-swift-cli-build@v1
-      id: binary
       with:
         swift-version: ${{ matrix.swift }}
         bin-name: "my-binary-name"
