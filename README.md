@@ -1,8 +1,8 @@
 # action-swift-cli-build
 
-Build swift cli tool on macOS or ubuntu
+Build swift cli tool on macOS or ubuntu, to run it or attach it to release
 
-## Build
+## Build and use
 
 ```yaml
 jobs:
@@ -25,7 +25,7 @@ jobs:
 
 ## Release
 
-To upload to release when published, use `upload-to-release` and pass `repo-token`.
+To upload to a release when publishing it, use `upload-to-release` and pass the `repo-token`.
 
 ```yaml
 name: release
@@ -53,15 +53,15 @@ jobs:
 
 ### Propose an install bash script
 
-A user then could launch a simple commande to install your binary in release
+A user then could launch a simple command to install your binary from release assets
 
 ```bash
 sudo curl -sL https://<orga>.github.io/<project>/install.sh | bash
 ```
 
-To do so, first active for your project the [github pages](https://docs.github.com/en/pages/getting-started-with-github-pages/about-github-pages).
+To do so, first active the [github pages](https://docs.github.com/en/pages/getting-started-with-github-pages/about-github-pages).
 
-Then create an "install.sh" script in your project and do not forget to edit `binary` and `repository` variable to match your project.
+Then create an "install.sh" script in your project and do not forget to edit `binary` and `repository` variable to match your project needs.
 
 ```bash
 #!/usr/bin/env bash
