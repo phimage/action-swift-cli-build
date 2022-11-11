@@ -2,6 +2,8 @@
 
 Build swift cli tool on macOS or ubuntu, to run it or attach it to release
 
+Example in template [swift-cli-template](https://github.com/phimage/swift-cli-template)
+
 ## Build and use
 
 ```yaml
